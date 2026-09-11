@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>יישומון חקר קווים במשולש</title>
+<style>
+@font-face{font-family:SimplerPro;src:url('assets/fonts/SimplerPro-Regular.woff2') format('woff2');font-weight:400}
+@font-face{font-family:SimplerPro;src:url('assets/fonts/SimplerPro-Semibold.woff2') format('woff2');font-weight:600}
+@font-face{font-family:SimplerPro;src:url('assets/fonts/SimplerPro-Bold.woff2') format('woff2');font-weight:700}
+:root{
+  --navy:#17365e; --green:#6db580; --burgundy:#832058; --mustard:#e7b976;
+  --line:#728395; --bg:#f7f5f0; --card:#fff; --border:#e5e0d8; --muted:#5f6f7f;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--navy);font-family:SimplerPro,Arial,sans-serif}
+body{padding:18px 22px 24px}
+.topbar{max-width:1480px;margin:0 auto 18px;display:grid;grid-template-columns:180px 1fr 180px;align-items:center;direction:ltr;min-height:60px}
+.logo{height:45px;width:auto;object-fit:contain;justify-self:start}
+h1{direction:rtl;margin:0;text-align:center;color:var(--burgundy);font-size:31px;line-height:1.1;font-weight:700}
+.top-actions{justify-self:end;display:flex;gap:10px;direction:rtl}
+.btn{font:600 16px SimplerPro;border:1px solid #d4dde6;background:#fff;color:var(--navy);border-radius:12px;padding:10px 20px;cursor:pointer;transition:.15s}
+.btn:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(23,54,94,.08)}
+.btn.primary{background:var(--green);color:#fff;border-color:var(--green)}
+.btn.dark{background:var(--navy);color:#fff;border-color:var(--navy)}
+.layout{max-width:1480px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:22px;direction:ltr;align-items:stretch}
+.card{background:var(--card);border:1px solid var(--border);border-radius:22px;box-shadow:0 2px 10px rgba(23,54,94,.04)}
+.canvas-card{min-height:780px;padding:14px;direction:rtl;overflow:visible;position:relative}
+.sidebar{padding:22px 18px;direction:rtl;display:flex;flex-direction:column;gap:18px}
+.sidebar h2{font-size:27px;color:var(--burgundy);margin:0 0 8px;text-align:center}
+.sidebar p{font-size:17px;line-height:1.72;margin:0;color:var(--burgundy)}
+.hint{background:#fafbf8;border:1px solid #dfe8dc;border-radius:16px;padding:14px;color:var(--navy)!important;font-size:16px!important}
+.section-title{font-size:16px;font-weight:700;color:var(--navy);margin-bottom:8px;text-align:center}
+.vertex-grid,.toggle-grid,.tool-grid{display:grid;gap:8px}
+.vertex-grid{grid-template-columns:repeat(3,1fr);direction:ltr}
+.vbtn,.toggle,.toolbtn{font:600 15px SimplerPro;border:1px solid #d5dee7;border-radius:11px;background:#fff;color:var(--navy);padding:10px 8px;cursor:pointer;min-height:42px}
+.vbtn{display:flex;align-items:center;justify-content:center;gap:1px;direction:rtl}
+.vbtn bdi{font-family:Arial,sans-serif;font-weight:700}
+.vbtn.active{background:var(--green);color:#fff;border-color:var(--green)}
+.toggle{display:flex;align-items:center;justify-content:space-between;direction:rtl;padding:9px 12px}
+.toggle .swatch{width:22px;height:4px;border-radius:5px;display:inline-block}
+.toggle.off{opacity:.45}
+.toggle.alt .swatch{background:var(--green)}
+.toggle.med .swatch{background:var(--navy)}
+.toggle.bis .swatch{background:var(--burgundy)}
+.tool-grid{grid-template-columns:1fr 1fr}
+.toolbtn.active{background:#f3f7f9;border-color:#9fb5c8;box-shadow:inset 0 0 0 1px #9fb5c8}
+.notes{width:100%;min-height:108px;resize:vertical;border:1px solid #d5dee7;border-radius:12px;padding:12px 13px;font:400 16px SimplerPro;color:var(--navy);background:#fff;outline:none;line-height:1.55}
+.notes:focus{border-color:#9eb2c4;box-shadow:0 0 0 3px rgba(23,54,94,.06)}
+.canvas-wrap{height:750px;width:100%;position:relative;overflow:hidden;border-radius:18px}
+svg{display:block;width:100%;height:100%;touch-action:none;user-select:none}
+.geom-side{stroke:var(--line);stroke-width:2.2;stroke-linejoin:round;fill:none}
+.altitude{stroke:var(--green);stroke-width:7;stroke-linecap:round;fill:none;opacity:.48}
+.median{stroke:var(--navy);stroke-width:4.2;stroke-linecap:round;fill:none;stroke-dasharray:14 7}
+.bisector{stroke:var(--burgundy);stroke-width:2.8;stroke-linecap:round;fill:none}
+.extension{stroke:var(--line);stroke-width:1.7;stroke-dasharray:7 7;opacity:.72}
+.vertex-hit{fill:transparent;cursor:grab}
+.vertex-hit:active{cursor:grabbing}
+.vertex-ring{fill:#fff;stroke:var(--burgundy);stroke-width:3;pointer-events:none}
+.vertex-core{fill:var(--burgundy);pointer-events:none}
+.vertex-label{font:700 20px SimplerPro;fill:var(--navy);text-anchor:middle;pointer-events:none}
+.foot-mark{fill:none;stroke:var(--burgundy);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.mid-tick{stroke:var(--navy);stroke-width:2.2;stroke-linecap:round}
+.intersection-alt{fill:#fff;stroke:var(--green);stroke-width:3}
+.intersection-med{fill:#fff;stroke:var(--navy);stroke-width:3}
+.intersection-bis{fill:var(--burgundy);stroke:#fff;stroke-width:2}
+.intersection-label{font:700 14px SimplerPro;pointer-events:none;text-anchor:middle;paint-order:stroke;stroke:#fff;stroke-width:5px;stroke-linejoin:round}
+.intersection-label.alt{fill:var(--green)}.intersection-label.med{fill:var(--navy)}.intersection-label.bis{fill:var(--burgundy)}
+.tool-layer{pointer-events:none}
+.measure-tool{pointer-events:all;cursor:grab;filter:drop-shadow(0 2px 4px rgba(23,54,94,.12))}
+.measure-tool.dragging{cursor:grabbing}
+.measure-label{font:700 17px SimplerPro;fill:var(--navy);text-anchor:middle;direction:ltr;unicode-bidi:isolate;paint-order:stroke;stroke:#fff;stroke-width:7px;stroke-linejoin:round}
+.measure-label.angle{fill:var(--burgundy)}
+.ruler-body{fill:rgba(231,185,118,.20);stroke:#c99b51;stroke-width:1.6}
+.ruler-tick{stroke:#8a672d;stroke-width:1.1}
+.ruler-tick.major{stroke-width:1.6}
+.ruler-num{font:600 12px SimplerPro;fill:#6c5328;text-anchor:middle;direction:ltr}
+.tool-handle{fill:var(--burgundy);stroke:#fff;stroke-width:2;cursor:crosshair}
+.tool-handle-guide{stroke:var(--burgundy);stroke-width:1.4;stroke-dasharray:4 4;opacity:.7}
+.pro-body{fill:rgba(109,181,128,.10);stroke:#5b9e70;stroke-width:1.7}
+.pro-base{stroke:#5b9e70;stroke-width:2}
+.pro-tick{stroke:#4d8660;stroke-width:1}
+.pro-tick.major{stroke-width:1.6}
+.pro-num{font:600 10.5px SimplerPro;fill:#386f4c;text-anchor:middle;direction:ltr}
+.pro-center{fill:#fff;stroke:var(--burgundy);stroke-width:2}
+.legend-note{position:absolute;left:28px;bottom:22px;background:rgba(255,255,255,.93);border:1px solid #e2e6e8;border-radius:12px;padding:8px 12px;font-size:14px;color:var(--muted);pointer-events:none}
+.measure-result{position:absolute;left:24px;top:24px;z-index:8;display:none;max-width:46%;background:rgba(255,255,255,.97);border:1px solid #d7e0e7;border-radius:14px;padding:10px 15px;color:var(--navy);font-size:17px;font-weight:700;box-shadow:0 3px 12px rgba(23,54,94,.10);direction:ltr;unicode-bidi:isolate;text-align:center;pointer-events:none}
+.angle-ray-hit{stroke:transparent;stroke-width:22;pointer-events:stroke;cursor:pointer}
+.angle-ray-guide{stroke:#b9c7d2;stroke-width:4;stroke-linecap:round;opacity:.45;pointer-events:none}
+.angle-ray-guide.chosen{stroke:var(--burgundy);stroke-width:5;opacity:.78}
+.angle-ray-dot{fill:#fff;stroke:var(--burgundy);stroke-width:2.4;pointer-events:none}
+.angle-symbol-text{font:700 25px Georgia,'Times New Roman',serif;fill:var(--burgundy);direction:ltr;unicode-bidi:isolate}
+.angle-label-text{font:700 17px SimplerPro;fill:var(--burgundy);direction:ltr;unicode-bidi:isolate}
+.measured-ray{stroke:var(--burgundy);stroke-width:4;stroke-linecap:round;opacity:.92;pointer-events:none}
+.measured-angle-arc{fill:none;stroke:var(--burgundy);stroke-width:4;stroke-linecap:round;pointer-events:none}
+.measure-result.show{display:block}
+.snap-note{margin-top:8px;font-size:14px;line-height:1.45;color:var(--muted);text-align:center}
+@media(max-width:950px){
+ body{padding:10px}.topbar{grid-template-columns:120px 1fr 120px}.logo{height:36px}h1{font-size:24px}.btn{padding:8px 11px;font-size:14px}
+ .layout{grid-template-columns:1fr;direction:rtl}.canvas-card{min-height:600px;order:1}.sidebar{order:2}.canvas-wrap{height:570px}
+}
+@media(max-width:560px){.measure-result{left:10px;top:10px;max-width:78%;font-size:14px;padding:7px 10px}.topbar{grid-template-columns:78px 1fr 86px}.logo{height:29px}h1{font-size:20px}.top-actions{gap:5px}.btn{font-size:12px;padding:7px 8px}.canvas-card{padding:4px}.canvas-wrap{height:470px}.sidebar{padding:18px 14px}.sidebar h2{font-size:24px}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <img class="logo" src="assets/prisming-logo.png" alt="Prismind" />
+  <h1>יישומון חקר קווים מיוחדים במשולש</h1>
+  <div class="top-actions"><button id="resetBtn" class="btn">איפוס</button><button id="newBtn" class="btn primary">מצב חדש</button></div>
+</header>
+
+<main class="layout">
+  <section class="card canvas-card">
+    <div class="canvas-wrap">
+      <svg id="stage" viewBox="0 0 1040 720" preserveAspectRatio="xMidYMid meet" aria-label="משולש וכלי חקר">
+        <g id="extensionLayer"></g>
+        <polygon id="triangle" class="geom-side"></polygon>
+        <line id="altitude" class="altitude"></line>
+        <line id="median" class="median"></line>
+        <line id="bisector" class="bisector"></line>
+        <path id="rightMark" class="foot-mark"></path>
+        <g id="midTicks"></g>
+        <g id="intersectionLayer"></g>
+        <g id="vertices"></g>
+        <g id="measurementLabels"></g>
+        <g id="angleRayLayer"></g>
+        <g id="tools" class="tool-layer"></g>
+      </svg>
+      <div id="measureResult" class="measure-result"></div>
+      <div class="legend-note">סרגל: גררו אותו אל הצלע והוא ייצמד אליה. מד זווית: הצמידו לקודקוד ובחרו שתי קרניים.</div>
+    </div>
+  </section>
+
+  <aside class="card sidebar">
+    <section>
+      <h2>מה חוקרים?</h2>
+      <p>לפניכם משולש ושלושה קווים מיוחדים היוצאים מאותו קודקוד: <b>גובה, תיכון וחוצה זווית</b>.</p>
+      <p style="margin-top:12px">שנו את צורת המשולש ובדקו: מתי הקווים שונים זה מזה, ומתי שניים או שלושה מהם מתלכדים?</p>
+    </section>
+
+    <section>
+      <div class="section-title">בחרו את הקודקוד שממנו יוצאים הקווים:</div>
+      <div class="vertex-grid">
+        <button class="vbtn active" data-v="A"><span>מ־</span><bdi dir="ltr">A</bdi></button>
+        <button class="vbtn" data-v="B"><span>מ־</span><bdi dir="ltr">B</bdi></button>
+        <button class="vbtn" data-v="C"><span>מ־</span><bdi dir="ltr">C</bdi></button>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-title">הציגו או הסתירו קווים:</div>
+      <div class="toggle-grid">
+        <button id="toggleAltitude" class="toggle alt"><span>גובה</span><span class="swatch"></span></button>
+        <button id="toggleMedian" class="toggle med"><span>תיכון</span><span class="swatch"></span></button>
+        <button id="toggleBisector" class="toggle bis"><span>חוצה זווית</span><span class="swatch"></span></button>
+      </div>
+      <div class="snap-note">כאשר הקווים מתלכדים, הם נשארים נראים: הגובה רחב ושקוף, התיכון מקווקו וחוצה הזווית דק בבורדו.</div>
+    </section>
+
+    <section>
+      <div class="section-title">כלי מדידה:</div>
+      <div class="tool-grid">
+        <button id="rulerBtn" class="toolbtn">סרגל</button>
+        <button id="protractorBtn" class="toolbtn">מד זווית</button>
+        <button id="clearMeasuresBtn" class="toolbtn" style="grid-column:1 / -1">נקה מדידות</button>
+      </div>
+      <p class="hint" style="margin-top:10px">אין צורך לסובב ידנית. גררו את <b>הסרגל על הצלע</b> והוא ייצמד אליה ויציג את אורכה. למדידת זווית, גררו את <b>מרכז מד הזווית אל הקודקוד</b>, ואז בחרו במפורש <b>שתי קרניים</b> — צלע, גובה, תיכון או חוצה זווית. המד יסתדר לפי הזווית שבחרתם.</p>
+    </section>
+
+  </aside>
+</main>
+
+<script>
+(()=>{
+const svg=document.getElementById('stage');
+const triangle=document.getElementById('triangle');
+const altitudeEl=document.getElementById('altitude');
+const medianEl=document.getElementById('median');
+const bisectorEl=document.getElementById('bisector');
+const rightMark=document.getElementById('rightMark');
+const extensionLayer=document.getElementById('extensionLayer');
+const midTicks=document.getElementById('midTicks');
+const verticesLayer=document.getElementById('vertices');
+const toolsLayer=document.getElementById('tools');
+const measurementLabels=document.getElementById('measurementLabels');
+const angleRayLayer=document.getElementById('angleRayLayer');
+const intersectionLayer=document.getElementById('intersectionLayer');
+const W=1040,H=720,MARGIN=45;
+const COLORS={green:'#6db580',navy:'#17365e',burgundy:'#832058'};
+const RULER_LEN=720, RULER_UNIT=36;
+const measureResult=document.getElementById('measureResult');
+function showMeasureResult(html){measureResult.innerHTML=html;measureResult.classList.add('show')}
+function clearMeasureResult(){measureResult.classList.remove('show');measureResult.textContent=''}
+
+const PRESETS=[
+  {A:{x:230,y:580},B:{x:815,y:565},C:{x:505,y:155}},
+  {A:{x:235,y:575},B:{x:820,y:575},C:{x:527.5,y:155}}, // isosceles at C
+  {A:{x:275,y:590},B:{x:775,y:590},C:{x:525,y:157}}, // near equilateral
+  {A:{x:285,y:585},B:{x:780,y:585},C:{x:285,y:210}}, // right at A
+  {A:{x:205,y:565},B:{x:820,y:570},C:{x:365,y:260}}, // obtuse-ish
+  {A:{x:250,y:590},B:{x:800,y:555},C:{x:650,y:190}},
+  {A:{x:235,y:590},B:{x:810,y:590},C:{x:522.5,y:92}}, // narrower isosceles
+  {A:{x:280,y:580},B:{x:765,y:555},C:{x:545,y:245}}
+];
+let presetIndex=0;
+let pts=deep(PRESETS[0]);
+let selected='A';
+let vis={alt:true,med:true,bis:true};
+let toolState={
+  ruler:{visible:false,x:250,y:625,a:0,snapped:null},
+  protractor:{visible:false,x:500,y:420,a:0,side:-1,snapped:null}
+};
+let measuredSides=[];
+let measuredAngles=[];
+let proSelection=[];
+
+function deep(o){return JSON.parse(JSON.stringify(o))}
+function sub(p,q){return{x:p.x-q.x,y:p.y-q.y}}
+function add(p,q){return{x:p.x+q.x,y:p.y+q.y}}
+function mul(p,s){return{x:p.x*s,y:p.y*s}}
+function dot(a,b){return a.x*b.x+a.y*b.y}
+function len(v){return Math.hypot(v.x,v.y)}
+function dist(a,b){return len(sub(a,b))}
+function norm(v){const l=len(v)||1;return{x:v.x/l,y:v.y/l}}
+function midpoint(a,b){return{x:(a.x+b.x)/2,y:(a.y+b.y)/2}}
+function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
+function svgPoint(e){const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(svg.getScreenCTM().inverse())}
+
+function otherKeys(v){return ['A','B','C'].filter(k=>k!==v)}
+function footOfPerp(P,A,B){const AB=sub(B,A);const den=dot(AB,AB)||1;const t=dot(sub(P,A),AB)/den;return{p:add(A,mul(AB,t)),t}}
+function angleBisectorFoot(V,P,Q){const a=dist(V,P),b=dist(V,Q);const d=a+b||1;return{x:(b*P.x+a*Q.x)/d,y:(b*P.y+a*Q.y)/d}}
+
+function lineAttrs(el,p1,p2){el.setAttribute('x1',p1.x);el.setAttribute('y1',p1.y);el.setAttribute('x2',p2.x);el.setAttribute('y2',p2.y)}
+function clear(node){while(node.firstChild)node.removeChild(node.firstChild)}
+function svgEl(tag,attrs={}){const e=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const[k,v]of Object.entries(attrs))e.setAttribute(k,v);return e}
+
+function drawVertices(){
+ clear(verticesLayer);
+ for(const k of ['A','B','C']){
+  const p=pts[k];
+  const hit=svgEl('circle',{cx:p.x,cy:p.y,r:25,class:'vertex-hit','data-k':k});
+  const ring=svgEl('circle',{cx:p.x,cy:p.y,r:9,class:'vertex-ring'});
+  const core=svgEl('circle',{cx:p.x,cy:p.y,r:3.2,class:'vertex-core'});
+  const lab=svgEl('text',{x:p.x,y:p.y-18,class:'vertex-label'});lab.textContent=k;
+  verticesLayer.append(hit,ring,core,lab);
+ }
+}
+
+function drawExtensionAndRightAngle(V,P,Q,foot){
+ clear(extensionLayer);
+ rightMark.setAttribute('d','');
+ if(!vis.alt)return;
+ const t=foot.t;
+ if(t<0||t>1){
+   const dir=norm(sub(Q,P));
+   let start,end;
+   if(t<0){start=foot.p;end=P}else{start=Q;end=foot.p}
+   const ext=svgEl('line',{x1:start.x,y1:start.y,x2:end.x,y2:end.y,class:'extension'});extensionLayer.append(ext);
+ }
+ const u=norm(sub(Q,P));
+ const toV=norm(sub(V,foot.p));
+ const s=15;
+ const a=add(foot.p,mul(u,s));
+ const b=add(a,mul(toV,s));
+ const c=add(foot.p,mul(toV,s));
+ rightMark.setAttribute('d',`M ${a.x} ${a.y} L ${b.x} ${b.y} L ${c.x} ${c.y}`);
+}
+
+function drawMidTicks(P,Q,M){
+ clear(midTicks); if(!vis.med)return;
+ const u=norm(sub(Q,P)), n={x:-u.y,y:u.x};
+ const gap=5,half=8;
+ for(const sg of [-1,1]){
+   const center=add(M,mul(u,sg*gap));
+   const p1=add(center,mul(n,-half)),p2=add(center,mul(n,half));
+   midTicks.append(svgEl('line',{x1:p1.x,y1:p1.y,x2:p2.x,y2:p2.y,class:'mid-tick'}));
+ }
+}
+
+function normRotation(a){
+ a=((a+180)%360+360)%360-180;
+ if(a>90)a-=180;
+ if(a<-90)a+=180;
+ return a;
+}
+function drawIntersectionMarkers(foot,M,Bf){
+ clear(intersectionLayer);
+ const items=[];
+ if(vis.alt)items.push({p:foot.p,type:'alt',label:'H'});
+ if(vis.med)items.push({p:M,type:'med',label:'M'});
+ if(vis.bis)items.push({p:Bf,type:'bis',label:'D'});
+ const offsets={alt:{x:-15,y:-12},med:{x:0,y:21},bis:{x:15,y:-12}};
+ for(const it of items){
+   if(it.type==='alt') intersectionLayer.append(svgEl('circle',{cx:it.p.x,cy:it.p.y,r:8,class:'intersection-alt'}));
+   if(it.type==='med') intersectionLayer.append(svgEl('rect',{x:it.p.x-6,y:it.p.y-6,width:12,height:12,transform:`rotate(45 ${it.p.x} ${it.p.y})`,class:'intersection-med'}));
+   if(it.type==='bis') intersectionLayer.append(svgEl('circle',{cx:it.p.x,cy:it.p.y,r:4.5,class:'intersection-bis'}));
+   const o=offsets[it.type],t=svgEl('text',{x:it.p.x+o.x,y:it.p.y+o.y,class:`intersection-label ${it.type}`});t.textContent=it.label;intersectionLayer.append(t);
+ }
+}
+
+function renderGeometry(){
+ triangle.setAttribute('points',`${pts.A.x},${pts.A.y} ${pts.B.x},${pts.B.y} ${pts.C.x},${pts.C.y}`);
+ const [k1,k2]=otherKeys(selected), V=pts[selected],P=pts[k1],Q=pts[k2];
+ const foot=footOfPerp(V,P,Q),M=midpoint(P,Q),Bf=angleBisectorFoot(V,P,Q);
+ lineAttrs(altitudeEl,V,foot.p); altitudeEl.style.display=vis.alt?'':'none';
+ lineAttrs(medianEl,V,M); medianEl.style.display=vis.med?'':'none';
+ lineAttrs(bisectorEl,V,Bf); bisectorEl.style.display=vis.bis?'':'none';
+ drawExtensionAndRightAngle(V,P,Q,foot);
+ drawMidTicks(P,Q,M);
+ drawIntersectionMarkers(foot,M,Bf);
+ drawVertices();
+ renderMeasurementLabels();
+}
+
+function rulerMarkup(){
+ const g=svgEl('g',{class:'measure-tool',id:'rulerTool'});
+ const body=svgEl('rect',{x:0,y:-28,width:RULER_LEN,height:56,rx:5,class:'ruler-body'});g.append(body);
+ const unit=RULER_UNIT;
+ for(let i=0;i<=220;i++){
+  const x=i*(unit/10); if(x>RULER_LEN)break;
+  const major=i%10===0, half=i%5===0;
+  const h=major?22:(half?15:9);
+  g.append(svgEl('line',{x1:x,y1:-28,x2:x,y2:-28+h,class:`ruler-tick${major?' major':''}`}));
+  if(major){const t=svgEl('text',{x,y:10,class:'ruler-num'});t.textContent=String(i/10);g.append(t)}
+ }
+ return g;
+}
+function protractorMarkup(side=-1){
+ const g=svgEl('g',{class:'measure-tool',id:'protractorTool'});
+ const R=150, sy=side<0?-1:1;
+ const sweep=side<0?1:0;
+ const path=svgEl('path',{d:`M ${-R} 0 A ${R} ${R} 0 0 ${sweep} ${R} 0 L ${-R} 0 Z`,class:'pro-body'});g.append(path);
+ g.append(svgEl('line',{x1:-R,y1:0,x2:R,y2:0,class:'pro-base'}));
+ for(let d=0;d<=180;d+=5){
+  const a=Math.PI-(d*Math.PI/180);const major=d%10===0;const r1=R-(major?13:7);
+  const x1=Math.cos(a)*r1,y1=sy*Math.sin(a)*r1,x2=Math.cos(a)*R,y2=sy*Math.sin(a)*R;
+  g.append(svgEl('line',{x1,y1,x2,y2,class:`pro-tick${major?' major':''}`}));
+  if(d%20===0){const rr=R-27;const t=svgEl('text',{x:Math.cos(a)*rr,y:sy*Math.sin(a)*rr+(side<0?4:-4),class:'pro-num'});t.textContent=d;g.append(t)}
+ }
+ g.append(svgEl('circle',{cx:0,cy:0,r:6,class:'pro-center'}));
+ return g;
+}
+
+function normAngle(a){a%=360;if(a<0)a+=360;return a}
+function sideList(){return [
+ {name:'AB',p:pts.A,q:pts.B},
+ {name:'BC',p:pts.B,q:pts.C},
+ {name:'CA',p:pts.C,q:pts.A}
+]}
+function pointSegDistance(P,A,B){
+ const AB=sub(B,A), den=dot(AB,AB)||1;
+ const t=clamp(dot(sub(P,A),AB)/den,0,1);
+ const proj=add(A,mul(AB,t));
+ return {d:dist(P,proj),t,proj};
+}
+function addSideMeasurement(name){if(!measuredSides.includes(name))measuredSides.push(name)}
+function addAngleMeasurement(data){
+ const key=data.key;
+ if(!measuredAngles.some(x=>x.key===key))measuredAngles.push(data);
+}
+function clearMeasurements(){measuredSides=[];measuredAngles=[];proSelection=[];clearMeasureResult();clear(angleRayLayer);renderMeasurementLabels()}
+function getCentroid(){return{x:(pts.A.x+pts.B.x+pts.C.x)/3,y:(pts.A.y+pts.B.y+pts.C.y)/3}}
+function appendAngleLabel(parent,pos,label,value){
+ const g=svgEl('g',{});
+ const sym=svgEl('text',{x:pos.x-44,y:pos.y+7,class:'angle-symbol-text'});sym.textContent='∡';g.append(sym);
+ const t=svgEl('text',{x:pos.x-18,y:pos.y+5,class:'angle-label-text'});t.textContent=`${label} = ${value.toFixed(1)}°`;g.append(t);parent.append(g);
+}
+function renderMeasurementLabels(){
+ clear(measurementLabels);
+ const C=getCentroid();
+ for(const name of measuredSides){
+  const side=sideList().find(s=>s.name===name); if(!side)continue;
+  const m=midpoint(side.p,side.q),u=norm(sub(side.q,side.p));
+  let n={x:-u.y,y:u.x};
+  if(dot(sub(C,m),n)>0)n=mul(n,-1);
+  const pos=add(m,mul(n,30));
+  const t=svgEl('text',{x:pos.x,y:pos.y+6,class:'measure-label'});
+  t.textContent=`${name} = ${(dist(side.p,side.q)/RULER_UNIT).toFixed(1)}`; measurementLabels.append(t);
+ }
+ for(const a of measuredAngles){
+  const V=pts[a.vertex];
+  const u=norm(a.r1.vec()),v=norm(a.r2.vec());
+  let b=norm(add(u,v)); if(!isFinite(b.x)||!isFinite(b.y))b={x:0,y:-1};
+  const pos=add(V,mul(b,88));
+  appendAngleLabel(measurementLabels,pos,a.label,a.value);
+ }
+}
+function rayAngle(vec){return Math.atan2(vec.y,vec.x)*180/Math.PI}
+function smallestAngle(v1,v2){
+ const c=clamp(dot(v1,v2)/((len(v1)||1)*(len(v2)||1)),-1,1);
+ return Math.acos(c)*180/Math.PI;
+}
+function specialRayEndpoints(k){
+ const rays=[];
+ const V=pts[k], others=otherKeys(k);
+ for(const o of others)rays.push({id:o,pointName:o,point:pts[o],vec:()=>sub(pts[o],V)});
+ if(k===selected){
+  const P=pts[others[0]],Q=pts[others[1]];
+  if(vis.alt){const F=footOfPerp(V,P,Q).p;rays.push({id:'alt',pointName:'H',point:F,vec:()=>sub(F,V)})}
+  if(vis.med){const M=midpoint(P,Q);rays.push({id:'med',pointName:'M',point:M,vec:()=>sub(M,V)})}
+  if(vis.bis){const Bf=angleBisectorFoot(V,P,Q);rays.push({id:'bis',pointName:'D',point:Bf,vec:()=>sub(Bf,V)})}
+ }
+ // De-duplicate rays that practically overlap so clicking stays usable.
+ const out=[];
+ for(const r of rays){
+   const a=normAngle(rayAngle(r.vec()));
+   if(out.some(q=>Math.min(Math.abs(a-q.a),360-Math.abs(a-q.a))<1.2))continue;
+   r.a=a;out.push(r);
+ }
+ return out;
+}
+function drawAngleRayChoices(vertex){
+ clear(angleRayLayer);
+ if(!vertex)return;
+ const V=pts[vertex],rays=specialRayEndpoints(vertex);
+ rays.forEach(r=>{
+   const u=norm(r.vec()),end=add(V,mul(u,220));
+   const guide=svgEl('line',{x1:V.x,y1:V.y,x2:end.x,y2:end.y,class:`angle-ray-guide${proSelection.some(x=>x.id===r.id)?' chosen':''}`});
+   const hit=svgEl('line',{x1:V.x,y1:V.y,x2:end.x,y2:end.y,class:'angle-ray-hit','data-ray':r.id});
+   angleRayLayer.append(guide,hit);
+ });
+ angleRayLayer.querySelectorAll('.angle-ray-hit').forEach(hit=>hit.addEventListener('pointerdown',e=>{
+   e.stopPropagation();selectAngleRay(vertex,hit.dataset.ray);
+ }));
+ const latest=[...measuredAngles].reverse().find(a=>a.vertex===vertex);
+ if(latest)drawMeasuredRays(vertex,latest.r1,latest.r2);
+}
+
+function protractorCandidate(base,other,vertex){
+ const raw=rayAngle(base.vec());
+ const a=normRotation(raw);
+ const ar=a*Math.PI/180;
+ const ov=other.vec();
+ const localY=-Math.sin(ar)*ov.x+Math.cos(ar)*ov.y;
+ const side=localY<0?-1:1;
+ // Sample the transformed semicircle and score any overflow. Lower is better.
+ const V=pts[vertex], R=155;
+ let overflow=0;
+ for(let d=0;d<=180;d+=5){
+   const theta=Math.PI-d*Math.PI/180;
+   const lx=Math.cos(theta)*R, ly=side*Math.sin(theta)*R;
+   const x=V.x+Math.cos(ar)*lx-Math.sin(ar)*ly;
+   const y=V.y+Math.sin(ar)*lx+Math.cos(ar)*ly;
+   overflow+=Math.max(0,18-x)+Math.max(0,x-(W-18))+Math.max(0,18-y)+Math.max(0,y-(H-18));
+ }
+ return {base,other,a,side,overflow};
+}
+function drawMeasuredRays(vertex,r1,r2){
+ // Keep the selected rays visible on top of the protractor so the student can see exactly what was measured.
+ const V=pts[vertex];
+ for(const r of [r1,r2]){
+   const u=norm(r.vec()), end=add(V,mul(u,145));
+   angleRayLayer.append(svgEl('line',{x1:V.x,y1:V.y,x2:end.x,y2:end.y,class:'measured-ray'}));
+ }
+ // Draw a small arc between the two selected rays.
+ const a1=Math.atan2(r1.vec().y,r1.vec().x), a2=Math.atan2(r2.vec().y,r2.vec().x);
+ let delta=a2-a1; while(delta<=-Math.PI)delta+=2*Math.PI; while(delta>Math.PI)delta-=2*Math.PI;
+ const rr=58, start={x:V.x+Math.cos(a1)*rr,y:V.y+Math.sin(a1)*rr}, end={x:V.x+Math.cos(a1+delta)*rr,y:V.y+Math.sin(a1+delta)*rr};
+ angleRayLayer.append(svgEl('path',{d:`M ${start.x} ${start.y} A ${rr} ${rr} 0 0 ${delta>0?1:0} ${end.x} ${end.y}`,class:'measured-angle-arc'}));
+}
+function selectAngleRay(vertex,id){
+ const rays=specialRayEndpoints(vertex);const ray=rays.find(r=>r.id===id);if(!ray)return;
+ if(proSelection.length===0){
+   proSelection=[ray];
+   showMeasureResult('בחרו כעת את הקרן השנייה');
+   drawAngleRayChoices(vertex);
+   return;
+ }
+ if(proSelection[0].id===id){proSelection=[];drawAngleRayChoices(vertex);showMeasureResult('בחרו שתי קרניים למדידת הזווית');return}
+ const r1=proSelection[0],r2=ray;
+ const val=smallestAngle(r1.vec(),r2.vec());
+ const label=`${r1.pointName}${vertex}${r2.pointName}`;
+ const data={key:`${vertex}:${[r1.id,r2.id].sort().join('-')}`,vertex,r1,r2,label,value:val};
+ addAngleMeasurement(data);
+ // Choose the orientation that keeps the entire protractor inside the drawing area.
+ const c1=protractorCandidate(r1,r2,vertex), c2=protractorCandidate(r2,r1,vertex);
+ const best=c1.overflow<=c2.overflow?c1:c2;
+ toolState.protractor.a=best.a;
+ toolState.protractor.side=best.side;
+ toolState.protractor.snapped=vertex;
+ proSelection=[];
+ showMeasureResult(`∡${label} = ${val.toFixed(1)}°`);
+ renderMeasurementLabels();renderTools();drawAngleRayChoices(vertex);drawMeasuredRays(vertex,r1,r2);
+}
+
+function snapProtractorAtPoint(P){
+ let best=null;
+ for(const k of ['A','B','C']){const d=dist(P,pts[k]);if(d<85&&(!best||d<best.d))best={k,d}}
+ if(!best)return false;
+ const s=toolState.protractor;s.x=pts[best.k].x;s.y=pts[best.k].y;s.a=0;s.side=-1;s.snapped=best.k;
+ proSelection=[];
+ showMeasureResult('בחרו שתי קרניים למדידת הזווית');
+ drawAngleRayChoices(best.k);
+ return true;
+}
+function snapRulerAtPoint(P){
+ let best=null;
+ for(const side of sideList()){
+   const hit=pointSegDistance(P,side.p,side.q);
+   if(hit.d<90&&(!best||hit.d<best.d))best={...side,...hit};
+ }
+ if(!best)return false;
+ let p=best.p,q=best.q;
+ let a=rayAngle(sub(q,p));
+ // Keep ruler numbers upright: reverse the baseline if needed.
+ if(a>90||a<-90){const tmp=p;p=q;q=tmp;a=rayAngle(sub(q,p));}
+ a=normRotation(a);
+ const s=toolState.ruler;
+ s.x=p.x;s.y=p.y;s.a=a;s.snapped=best.name;
+ return true;
+}
+
+function renderTools(){
+ clear(toolsLayer);
+ if(toolState.ruler.visible){const g=rulerMarkup();applyTransform(g,toolState.ruler);toolsLayer.append(g);bindTool(g,'ruler')}
+ if(toolState.protractor.visible){const g=protractorMarkup(toolState.protractor.side);applyTransform(g,toolState.protractor);toolsLayer.append(g);bindTool(g,'protractor')}
+ document.getElementById('rulerBtn').classList.toggle('active',toolState.ruler.visible);
+ document.getElementById('protractorBtn').classList.toggle('active',toolState.protractor.visible);
+ if(toolState.protractor.visible&&toolState.protractor.snapped)drawAngleRayChoices(toolState.protractor.snapped);
+}
+function applyTransform(g,s){g.setAttribute('transform',`translate(${s.x} ${s.y}) rotate(${s.a})`)}
+
+let toolDrag=null;
+function bindTool(g,key){
+ g.addEventListener('pointerdown',e=>{
+  e.preventDefault();e.stopPropagation(); const p=svgPoint(e);
+  toolDrag={key,dx:p.x-toolState[key].x,dy:p.y-toolState[key].y,pointerId:e.pointerId};
+  g.classList.add('dragging'); g.setPointerCapture(e.pointerId);
+ });
+ g.addEventListener('pointermove',e=>{
+  if(!toolDrag||toolDrag.key!==key)return;
+  e.preventDefault();
+  const p=svgPoint(e),s=toolState[key]; clearMeasureResult();
+  if(key==='ruler'){
+    const didSnap=snapRulerAtPoint(p);
+    if(!didSnap){
+      s.snapped=null;s.a=0;
+      s.x=clamp(p.x-toolDrag.dx,20,W-80);s.y=clamp(p.y-toolDrag.dy,20,H-20);
+    }
+    applyTransform(g,s);
+  }else{
+    clear(angleRayLayer);proSelection=[];s.snapped=null;s.side=-1;s.a=0;
+    s.x=clamp(p.x-toolDrag.dx,30,W-30);s.y=clamp(p.y-toolDrag.dy,30,H-30);
+    applyTransform(g,s);
+  }
+ });
+ const stop=e=>{
+   if(!toolDrag||toolDrag.key!==key)return;
+   const p=svgPoint(e);
+   if(key==='ruler'){
+     if(!toolState.ruler.snapped)snapRulerAtPoint(p);
+     if(toolState.ruler.snapped){addSideMeasurement(toolState.ruler.snapped);showMeasureResult(`${toolState.ruler.snapped} = ${(dist(sideList().find(x=>x.name===toolState.ruler.snapped).p,sideList().find(x=>x.name===toolState.ruler.snapped).q)/RULER_UNIT).toFixed(1)}`)}
+   }else snapProtractorAtPoint(p);
+   toolDrag=null;g.classList.remove('dragging');renderTools();renderMeasurementLabels();
+ };
+ g.addEventListener('pointerup',stop);
+ g.addEventListener('pointercancel',()=>{toolDrag=null;g.classList.remove('dragging')});
+}
+
+let draggingVertex=null;
+verticesLayer.addEventListener('pointerdown',e=>{
+ const hit=e.target.closest?.('.vertex-hit'); if(!hit)return;
+ e.preventDefault(); draggingVertex=hit.dataset.k; clearMeasurements();
+ toolState.ruler.snapped=null; toolState.protractor.snapped=null;
+});
+window.addEventListener('pointermove',e=>{
+ if(!draggingVertex)return;
+ e.preventDefault();
+ const p=svgPoint(e);
+ pts[draggingVertex]={x:clamp(p.x,MARGIN,W-MARGIN),y:clamp(p.y,MARGIN,H-MARGIN)};
+ renderGeometry();
+},{passive:false});
+window.addEventListener('pointerup',()=>{draggingVertex=null});
+window.addEventListener('pointercancel',()=>{draggingVertex=null});
+
+function render(){renderGeometry();renderTools()}
+
+document.querySelectorAll('.vbtn').forEach(b=>b.addEventListener('click',()=>{
+ selected=b.dataset.v;clearMeasureResult();proSelection=[];clear(angleRayLayer);toolState.protractor.snapped=null;document.querySelectorAll('.vbtn').forEach(x=>x.classList.toggle('active',x===b));renderGeometry();
+}));
+function toggleLine(k,id){vis[k]=!vis[k];clearMeasureResult();document.getElementById(id).classList.toggle('off',!vis[k]);renderGeometry();if(toolState.protractor.snapped)drawAngleRayChoices(toolState.protractor.snapped)}
+document.getElementById('toggleAltitude').onclick=()=>toggleLine('alt','toggleAltitude');
+document.getElementById('toggleMedian').onclick=()=>toggleLine('med','toggleMedian');
+document.getElementById('toggleBisector').onclick=()=>toggleLine('bis','toggleBisector');
+document.getElementById('rulerBtn').onclick=()=>{clearMeasureResult();toolState.ruler.visible=!toolState.ruler.visible;renderTools()};
+document.getElementById('protractorBtn').onclick=()=>{clearMeasureResult();toolState.protractor.visible=!toolState.protractor.visible;proSelection=[];clear(angleRayLayer);renderTools()};
+document.getElementById('clearMeasuresBtn').onclick=()=>clearMeasurements();
+document.getElementById('resetBtn').onclick=()=>{
+ pts=deep(PRESETS[presetIndex]);selected='A';vis={alt:true,med:true,bis:true};toolState={ruler:{visible:false,x:250,y:625,a:0,snapped:null},protractor:{visible:false,x:500,y:420,a:0,side:-1,snapped:null}};measuredSides=[];measuredAngles=[];proSelection=[];clear(angleRayLayer);clearMeasureResult();
+ document.querySelectorAll('.vbtn').forEach(b=>b.classList.toggle('active',b.dataset.v==='A'));
+ ['toggleAltitude','toggleMedian','toggleBisector'].forEach(id=>document.getElementById(id).classList.remove('off'));render();
+};
+document.getElementById('newBtn').onclick=()=>{
+ let next;do{next=Math.floor(Math.random()*PRESETS.length)}while(next===presetIndex&&PRESETS.length>1);presetIndex=next;pts=deep(PRESETS[presetIndex]);selected='A';measuredSides=[];measuredAngles=[];proSelection=[];clear(angleRayLayer);clearMeasureResult();toolState.ruler.snapped=null;toolState.protractor.snapped=null;
+ document.querySelectorAll('.vbtn').forEach(b=>b.classList.toggle('active',b.dataset.v==='A'));renderGeometry();
+};
+render();
+})();
+</script>
+</body>
+</html>
