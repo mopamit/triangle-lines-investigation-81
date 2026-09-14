@@ -9,7 +9,7 @@
 @font-face{font-family:SimplerPro;src:url('assets/fonts/SimplerPro-Semibold.woff2') format('woff2');font-weight:600}
 @font-face{font-family:SimplerPro;src:url('assets/fonts/SimplerPro-Bold.woff2') format('woff2');font-weight:700}
 :root{
-  --navy:#17365e; --green:#6db580; --burgundy:#832058; --mustard:#e7b976;
+  --navy:#17365e; --green:#6db580; --blue:#21739e; --red:#c53f3f; --burgundy:#832058; --mustard:#e7b976;
   --line:#728395; --bg:#f7f5f0; --card:#fff; --border:#e5e0d8; --muted:#5f6f7f;
 }
 *{box-sizing:border-box}
@@ -29,6 +29,7 @@ h1{direction:rtl;margin:0;text-align:center;color:var(--burgundy);font-size:31px
 .sidebar{padding:22px 18px;direction:rtl;display:flex;flex-direction:column;gap:18px}
 .sidebar h2{font-size:27px;color:var(--burgundy);margin:0 0 8px;text-align:center}
 .sidebar p{font-size:17px;line-height:1.72;margin:0;color:var(--burgundy)}
+.term-alt{color:var(--green);font-weight:700}.term-med{color:var(--blue);font-weight:700}.term-bis{color:var(--red);font-weight:700}
 .hint{background:#fafbf8;border:1px solid #dfe8dc;border-radius:16px;padding:14px;color:var(--navy)!important;font-size:16px!important}
 .section-title{font-size:16px;font-weight:700;color:var(--navy);margin-bottom:8px;text-align:center}
 .vertex-grid,.toggle-grid,.tool-grid{display:grid;gap:8px}
@@ -41,7 +42,7 @@ h1{direction:rtl;margin:0;text-align:center;color:var(--burgundy);font-size:31px
 .toggle .swatch{width:22px;height:4px;border-radius:5px;display:inline-block}
 .toggle.off{opacity:.45}
 .toggle.alt .swatch{background:var(--green)}
-.toggle.med .swatch{background:var(--navy)}
+.toggle.med .swatch{background:var(--blue)}
 .toggle.bis .swatch{background:var(--burgundy)}
 .tool-grid{grid-template-columns:1fr 1fr}
 .toolbtn.active{background:#f3f7f9;border-color:#9fb5c8;box-shadow:inset 0 0 0 1px #9fb5c8}
@@ -51,7 +52,7 @@ h1{direction:rtl;margin:0;text-align:center;color:var(--burgundy);font-size:31px
 svg{display:block;width:100%;height:100%;touch-action:none;user-select:none}
 .geom-side{stroke:var(--line);stroke-width:2.2;stroke-linejoin:round;fill:none}
 .altitude{stroke:var(--green);stroke-width:7;stroke-linecap:round;fill:none;opacity:.48}
-.median{stroke:var(--navy);stroke-width:4.2;stroke-linecap:round;fill:none;stroke-dasharray:14 7}
+.median{stroke:var(--blue);stroke-width:4.2;stroke-linecap:round;fill:none;stroke-dasharray:14 7}
 .bisector{stroke:var(--burgundy);stroke-width:2.8;stroke-linecap:round;fill:none}
 .extension{stroke:var(--line);stroke-width:1.7;stroke-dasharray:7 7;opacity:.72}
 .vertex-hit{fill:transparent;cursor:grab}
@@ -60,12 +61,12 @@ svg{display:block;width:100%;height:100%;touch-action:none;user-select:none}
 .vertex-core{fill:var(--burgundy);pointer-events:none}
 .vertex-label{font:700 20px SimplerPro;fill:var(--navy);text-anchor:middle;pointer-events:none}
 .foot-mark{fill:none;stroke:var(--burgundy);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
-.mid-tick{stroke:var(--navy);stroke-width:2.2;stroke-linecap:round}
+.mid-tick{stroke:var(--blue);stroke-width:2.2;stroke-linecap:round}
 .intersection-alt{fill:#fff;stroke:var(--green);stroke-width:3}
-.intersection-med{fill:#fff;stroke:var(--navy);stroke-width:3}
+.intersection-med{fill:#fff;stroke:var(--blue);stroke-width:3}
 .intersection-bis{fill:var(--burgundy);stroke:#fff;stroke-width:2}
 .intersection-label{font:700 14px SimplerPro;pointer-events:none;text-anchor:middle;paint-order:stroke;stroke:#fff;stroke-width:5px;stroke-linejoin:round}
-.intersection-label.alt{fill:var(--green)}.intersection-label.med{fill:var(--navy)}.intersection-label.bis{fill:var(--burgundy)}
+.intersection-label.alt{fill:var(--green)}.intersection-label.med{fill:var(--blue)}.intersection-label.bis{fill:var(--burgundy)}
 .tool-layer{pointer-events:none}
 .measure-tool{pointer-events:all;cursor:grab;filter:drop-shadow(0 2px 4px rgba(23,54,94,.12))}
 .measure-tool.dragging{cursor:grabbing}
@@ -134,7 +135,7 @@ svg{display:block;width:100%;height:100%;touch-action:none;user-select:none}
   <aside class="card sidebar">
     <section>
       <h2>מה חוקרים?</h2>
-      <p>לפניכם משולש ושלושה קווים מיוחדים היוצאים מאותו קודקוד: <b>גובה, תיכון וחוצה זווית</b>.</p>
+      <p>לפניכם משולש ושלושה קווים מיוחדים היוצאים מאותו קודקוד: <b><span class="term-alt">גובה</span>, <span class="term-med">תיכון</span> ו<span class="term-bis">חוצה זווית</span></b>.</p>
       <p style="margin-top:12px">שנו את צורת המשולש ובדקו: מתי הקווים שונים זה מזה, ומתי שניים או שלושה מהם מתלכדים?</p>
     </section>
 
@@ -150,11 +151,11 @@ svg{display:block;width:100%;height:100%;touch-action:none;user-select:none}
     <section>
       <div class="section-title">הציגו או הסתירו קווים:</div>
       <div class="toggle-grid">
-        <button id="toggleAltitude" class="toggle alt"><span>גובה</span><span class="swatch"></span></button>
-        <button id="toggleMedian" class="toggle med"><span>תיכון</span><span class="swatch"></span></button>
-        <button id="toggleBisector" class="toggle bis"><span>חוצה זווית</span><span class="swatch"></span></button>
+        <button id="toggleAltitude" class="toggle alt"><span class="term-alt">גובה</span><span class="swatch"></span></button>
+        <button id="toggleMedian" class="toggle med"><span class="term-med">תיכון</span><span class="swatch"></span></button>
+        <button id="toggleBisector" class="toggle bis"><span class="term-bis">חוצה זווית</span><span class="swatch"></span></button>
       </div>
-      <div class="snap-note">כאשר הקווים מתלכדים, הם נשארים נראים: הגובה רחב ושקוף, התיכון מקווקו וחוצה הזווית דק בבורדו.</div>
+      <div class="snap-note">כאשר הקווים מתלכדים, הם נשארים נראים: <span class="term-alt">הגובה</span> רחב ושקוף, <span class="term-med">התיכון</span> מקווקו ו<span class="term-bis">חוצה הזווית</span> דק בבורדו.</div>
     </section>
 
     <section>
@@ -164,7 +165,7 @@ svg{display:block;width:100%;height:100%;touch-action:none;user-select:none}
         <button id="protractorBtn" class="toolbtn">מד זווית</button>
         <button id="clearMeasuresBtn" class="toolbtn" style="grid-column:1 / -1">נקה מדידות</button>
       </div>
-      <p class="hint" style="margin-top:10px">אין צורך לסובב ידנית. גררו את <b>הסרגל על הצלע</b> והוא ייצמד אליה ויציג את אורכה. למדידת זווית, גררו את <b>מרכז מד הזווית אל הקודקוד</b>, ואז בחרו במפורש <b>שתי קרניים</b> — צלע, גובה, תיכון או חוצה זווית. המד יסתדר לפי הזווית שבחרתם.</p>
+      <p class="hint" style="margin-top:10px">אין צורך לסובב ידנית. גררו את <b>הסרגל על הצלע</b> והוא ייצמד אליה ויציג את אורכה. למדידת זווית, גררו את <b>מרכז מד הזווית אל הקודקוד</b>, ואז בחרו במפורש <b>שתי קרניים</b> — צלע, <span class="term-alt">גובה</span>, <span class="term-med">תיכון</span> או <span class="term-bis">חוצה זווית</span>. המד יסתדר לפי הזווית שבחרתם.</p>
     </section>
 
   </aside>
@@ -186,7 +187,7 @@ const measurementLabels=document.getElementById('measurementLabels');
 const angleRayLayer=document.getElementById('angleRayLayer');
 const intersectionLayer=document.getElementById('intersectionLayer');
 const W=1040,H=720,MARGIN=45;
-const COLORS={green:'#6db580',navy:'#17365e',burgundy:'#832058'};
+const COLORS={green:'#6db580',blue:'#21739e',red:'#c53f3f',navy:'#17365e',burgundy:'#832058'};
 const RULER_LEN=720, RULER_UNIT=36;
 const measureResult=document.getElementById('measureResult');
 function showMeasureResult(html){measureResult.innerHTML=html;measureResult.classList.add('show')}
@@ -258,11 +259,14 @@ function drawExtensionAndRightAngle(V,P,Q,foot){
    const ext=svgEl('line',{x1:start.x,y1:start.y,x2:end.x,y2:end.y,class:'extension'});extensionLayer.append(ext);
  }
  const u=norm(sub(Q,P));
- const toV=norm(sub(V,foot.p));
+ // Build the 90° mark from two exactly perpendicular unit vectors.
+ // This keeps the little square rigid and prevents it from bending while dragging.
+ let n={x:-u.y,y:u.x};
+ if(dot(n,sub(V,foot.p))<0) n=mul(n,-1);
  const s=15;
  const a=add(foot.p,mul(u,s));
- const b=add(a,mul(toV,s));
- const c=add(foot.p,mul(toV,s));
+ const b=add(a,mul(n,s));
+ const c=add(foot.p,mul(n,s));
  rightMark.setAttribute('d',`M ${a.x} ${a.y} L ${b.x} ${b.y} L ${c.x} ${c.y}`);
 }
 
