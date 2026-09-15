@@ -62,8 +62,8 @@ svg{display:block;width:100%;height:100%;touch-action:none;user-select:none}
 .vertex-label{font:700 20px SimplerPro;fill:var(--navy);text-anchor:middle;pointer-events:none}
 .foot-mark{fill:none;stroke:var(--burgundy);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 .mid-tick{stroke:var(--blue);stroke-width:2.2;stroke-linecap:round}
-.intersection-alt{fill:#fff;stroke:var(--green);stroke-width:3}
-.intersection-med{fill:#fff;stroke:var(--blue);stroke-width:3}
+.intersection-alt{fill:var(--green);stroke:#fff;stroke-width:2}
+.intersection-med{fill:var(--blue);stroke:#fff;stroke-width:2}
 .intersection-bis{fill:var(--burgundy);stroke:#fff;stroke-width:2}
 .intersection-label{font:700 14px SimplerPro;pointer-events:none;text-anchor:middle;paint-order:stroke;stroke:#fff;stroke-width:5px;stroke-linejoin:round}
 .intersection-label.alt{fill:var(--green)}.intersection-label.med{fill:var(--blue)}.intersection-label.bis{fill:var(--burgundy)}
@@ -295,8 +295,8 @@ function drawIntersectionMarkers(foot,M,Bf){
  if(vis.bis)items.push({p:Bf,type:'bis',label:'D'});
  const offsets={alt:{x:-15,y:-12},med:{x:0,y:21},bis:{x:15,y:-12}};
  for(const it of items){
-   if(it.type==='alt') intersectionLayer.append(svgEl('circle',{cx:it.p.x,cy:it.p.y,r:8,class:'intersection-alt'}));
-   if(it.type==='med') intersectionLayer.append(svgEl('rect',{x:it.p.x-6,y:it.p.y-6,width:12,height:12,transform:`rotate(45 ${it.p.x} ${it.p.y})`,class:'intersection-med'}));
+   if(it.type==='alt') intersectionLayer.append(svgEl('circle',{cx:it.p.x,cy:it.p.y,r:4.5,class:'intersection-alt'}));
+   if(it.type==='med') intersectionLayer.append(svgEl('circle',{cx:it.p.x,cy:it.p.y,r:4.5,class:'intersection-med'}));
    if(it.type==='bis') intersectionLayer.append(svgEl('circle',{cx:it.p.x,cy:it.p.y,r:4.5,class:'intersection-bis'}));
    const o=offsets[it.type],t=svgEl('text',{x:it.p.x+o.x,y:it.p.y+o.y,class:`intersection-label ${it.type}`});t.textContent=it.label;intersectionLayer.append(t);
  }
