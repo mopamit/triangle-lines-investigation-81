@@ -48,7 +48,7 @@ h1{direction:rtl;margin:0;text-align:center;color:var(--burgundy);font-size:31px
 .toolbtn.active{background:#f3f7f9;border-color:#9fb5c8;box-shadow:inset 0 0 0 1px #9fb5c8}
 .notes{width:100%;min-height:108px;resize:vertical;border:1px solid #d5dee7;border-radius:12px;padding:12px 13px;font:400 16px SimplerPro;color:var(--navy);background:#fff;outline:none;line-height:1.55}
 .notes:focus{border-color:#9eb2c4;box-shadow:0 0 0 3px rgba(23,54,94,.06)}
-.canvas-wrap{height:750px;width:100%;position:relative;overflow:hidden;border-radius:18px}
+.canvas-wrap{height:750px;width:100%;position:relative;overflow:hidden;border-radius:18px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 svg{display:block;width:100%;height:100%;touch-action:none;user-select:none}
 .geom-side{stroke:var(--line);stroke-width:2.2;stroke-linejoin:round;fill:none}
 .altitude{stroke:var(--green);stroke-width:7;stroke-linecap:round;fill:none;opacity:.48}
@@ -75,6 +75,14 @@ svg{display:block;width:100%;height:100%;touch-action:none;user-select:none}
 .ruler-body{fill:rgba(231,185,118,.20);stroke:#c99b51;stroke-width:1.6}
 .ruler-tick{stroke:#8a672d;stroke-width:1.1}
 .ruler-tick.major{stroke-width:1.6}
+.ruler-edge{stroke:#8a672d;stroke-width:1.8}
+.rot-knob{cursor:grab}
+.rot-knob-hit{fill:transparent}
+.rot-knob-ring{fill:#fff;stroke:var(--burgundy);stroke-width:2.4}
+.rot-knob-head{fill:var(--burgundy);pointer-events:none}
+.rot-knob-arrow{fill:none;stroke:var(--burgundy);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.measure-tool{outline:none}
+.measure-tool:focus-visible .ruler-body,.measure-tool:focus-visible .pro-body{stroke:var(--burgundy);stroke-width:2.6}
 .ruler-num{font:600 12px SimplerPro;fill:#6c5328;text-anchor:middle;direction:ltr}
 .tool-handle{fill:var(--burgundy);stroke:#fff;stroke-width:2;cursor:crosshair}
 .tool-handle-guide{stroke:var(--burgundy);stroke-width:1.4;stroke-dasharray:4 4;opacity:.7}
@@ -128,7 +136,7 @@ svg{display:block;width:100%;height:100%;touch-action:none;user-select:none}
         <g id="tools" class="tool-layer"></g>
       </svg>
       <div id="measureResult" class="measure-result"></div>
-      <div class="legend-note">סרגל: גררו אותו אל הצלע והוא ייצמד אליה. מד זווית: הצמידו לקודקוד ובחרו שתי קרניים.</div>
+      <div class="legend-note">גרירה – הזזה · שתי אצבעות או ידית הסיבוב – סיבוב · הקשה כפולה – הצמדה</div>
     </div>
   </section>
 
@@ -165,7 +173,7 @@ svg{display:block;width:100%;height:100%;touch-action:none;user-select:none}
         <button id="protractorBtn" class="toolbtn">מד זווית</button>
         <button id="clearMeasuresBtn" class="toolbtn" style="grid-column:1 / -1">נקה מדידות</button>
       </div>
-      <p class="hint" style="margin-top:10px">אין צורך לסובב ידנית. גררו את <b>הסרגל על הצלע</b> והוא ייצמד אליה ויציג את אורכה. למדידת זווית, גררו את <b>מרכז מד הזווית אל הקודקוד</b>, ואז בחרו במפורש <b>שתי קרניים</b> — צלע, <span class="term-alt">גובה</span>, <span class="term-med">תיכון</span> או <span class="term-bis">חוצה זווית</span>. המד יסתדר לפי הזווית שבחרתם.</p>
+      <p class="hint" style="margin-top:10px">את הכלים אפשר להזיז לכל מקום ולסובב — <b>בשתי אצבעות</b> במסך מגע, או בגרירת <b>ידית הסיבוב</b> שבקצה הכלי. כלי שמתקרב לצלע או לקודקוד נצמד אליו.<br>למדידת צלע הניחו את <b>אפס הסרגל על קודקוד</b> ואת שפתו על הצלע. למדידת זווית הניחו את <b>מרכז מד הזווית על הקודקוד</b> ובחרו <b>שתי קרניים</b>. הקשה כפולה על כלי מצמידה אותו אוטומטית.</p>
     </section>
 
   </aside>
@@ -207,10 +215,11 @@ let presetIndex=0;
 let pts=deep(PRESETS[0]);
 let selected='A';
 let vis={alt:true,med:true,bis:true};
-let toolState={
-  ruler:{visible:false,x:250,y:625,a:0,snapped:null},
+function initialTools(){return{
+  ruler:{visible:false,x:160,y:625,a:0,snapped:null,pin:null},
   protractor:{visible:false,x:500,y:420,a:0,side:-1,snapped:null}
-};
+}}
+let toolState=initialTools();
 let measuredSides=[];
 let measuredAngles=[];
 let proSelection=[];
@@ -316,21 +325,36 @@ function renderGeometry(){
  renderMeasurementLabels();
 }
 
+// ---------- כלי מדידה: סרגל ומד זווית ----------
+// ידית סיבוב קטנה: חלופה לעכבר/משטח מגע, שבהם אין מחוות של שתי אצבעות.
+function rotKnob(x,y){
+ // במסך קטן השרטוט מוקטן – מגדילים את הידית כדי שתישאר נוחה לאצבע.
+ const ctm=svg.getScreenCTM(), sc=ctm?clamp(0.85/ctm.a,1,2.4):1;
+ const k=svgEl('g',{class:'rot-knob','data-role':'knob',transform:`translate(${x+(sc-1)*13} ${y}) scale(${sc})`});
+ k.append(svgEl('circle',{r:24,class:'rot-knob-hit'}));
+ k.append(svgEl('circle',{r:13,class:'rot-knob-ring'}));
+ k.append(svgEl('path',{d:'M -6.5 0 A 6.5 6.5 0 1 1 0 6.5',class:'rot-knob-arrow'}));
+ k.append(svgEl('path',{d:'M -3.6 6.5 L 1.2 2.6 L 1.2 10.4 Z',class:'rot-knob-head'}));
+ return k;
+}
+// שפת המדידה של הסרגל נמצאת על y=0 והאפס בראשית — כמו סרגל אמיתי שמניחים את שפתו על הצלע.
 function rulerMarkup(){
- const g=svgEl('g',{class:'measure-tool',id:'rulerTool'});
- const body=svgEl('rect',{x:0,y:-28,width:RULER_LEN,height:56,rx:5,class:'ruler-body'});g.append(body);
+ const g=svgEl('g',{class:'measure-tool',id:'rulerTool',tabindex:0,'aria-label':'סרגל. חצים – הזזה, סוגריים מרובעים – סיבוב'});
+ g.append(svgEl('rect',{x:-14,y:0,width:RULER_LEN+28,height:56,rx:5,class:'ruler-body'}));
  const unit=RULER_UNIT;
  for(let i=0;i<=220;i++){
   const x=i*(unit/10); if(x>RULER_LEN)break;
   const major=i%10===0, half=i%5===0;
   const h=major?22:(half?15:9);
-  g.append(svgEl('line',{x1:x,y1:-28,x2:x,y2:-28+h,class:`ruler-tick${major?' major':''}`}));
-  if(major){const t=svgEl('text',{x,y:10,class:'ruler-num'});t.textContent=String(i/10);g.append(t)}
+  g.append(svgEl('line',{x1:x,y1:0,x2:x,y2:h,class:`ruler-tick${major?' major':''}`}));
+  if(major){const t=svgEl('text',{x,y:39,class:'ruler-num'});t.textContent=String(i/10);g.append(t)}
  }
+ g.append(svgEl('line',{x1:-14,y1:0,x2:RULER_LEN+14,y2:0,class:'ruler-edge'}));
+ g.append(rotKnob(RULER_LEN+42,28));
  return g;
 }
 function protractorMarkup(side=-1){
- const g=svgEl('g',{class:'measure-tool',id:'protractorTool'});
+ const g=svgEl('g',{class:'measure-tool',id:'protractorTool',tabindex:0,'aria-label':'מד זווית. חצים – הזזה, סוגריים מרובעים – סיבוב'});
  const R=150, sy=side<0?-1:1;
  const sweep=side<0?1:0;
  const path=svgEl('path',{d:`M ${-R} 0 A ${R} ${R} 0 0 ${sweep} ${R} 0 L ${-R} 0 Z`,class:'pro-body'});g.append(path);
@@ -342,9 +366,9 @@ function protractorMarkup(side=-1){
   if(d%20===0){const rr=R-27;const t=svgEl('text',{x:Math.cos(a)*rr,y:sy*Math.sin(a)*rr+(side<0?4:-4),class:'pro-num'});t.textContent=d;g.append(t)}
  }
  g.append(svgEl('circle',{cx:0,cy:0,r:6,class:'pro-center'}));
+ g.append(rotKnob(R+34,0));
  return g;
 }
-
 function normAngle(a){a%=360;if(a<0)a+=360;return a}
 function sideList(){return [
  {name:'AB',p:pts.A,q:pts.B},
@@ -377,7 +401,10 @@ function renderMeasurementLabels(){
   const m=midpoint(side.p,side.q),u=norm(sub(side.q,side.p));
   let n={x:-u.y,y:u.x};
   if(dot(sub(C,m),n)>0)n=mul(n,-1);
-  const pos=add(m,mul(n,30));
+  // אם גוף הסרגל מונח כרגע מחוץ לצלע הזו, מרחיקים את התווית כדי שלא תוסתר.
+ const r=toolState.ruler, ra=r.a*Math.PI/180, bodyN={x:-Math.sin(ra),y:Math.cos(ra)};
+  const under=r.visible&&r.snapped===name&&dot(bodyN,n)>0;
+  const pos=add(m,mul(n,under?86:30));
   const t=svgEl('text',{x:pos.x,y:pos.y+6,class:'measure-label'});
   t.textContent=`${name} = ${(dist(side.p,side.q)/RULER_UNIT).toFixed(1)}`; measurementLabels.append(t);
  }
@@ -482,6 +509,7 @@ function selectAngleRay(vertex,id){
  toolState.protractor.a=best.a;
  toolState.protractor.side=best.side;
  toolState.protractor.snapped=vertex;
+ syncRaw('protractor');
  proSelection=[];
  showMeasureResult(`∡${label} = ${val.toFixed(1)}°`);
  renderMeasurementLabels();renderTools();drawAngleRayChoices(vertex);drawMeasuredRays(vertex,r1,r2);
@@ -510,62 +538,182 @@ function snapRulerAtPoint(P){
  if(a>90||a<-90){const tmp=p;p=q;q=tmp;a=rayAngle(sub(q,p));}
  a=normRotation(a);
  const s=toolState.ruler;
- s.x=p.x;s.y=p.y;s.a=a;s.snapped=best.name;
+ s.x=p.x;s.y=p.y;s.a=a;s.snapped=best.name;s.pin=['A','B','C'].find(k=>pts[k]===p)||null;
+ syncRaw('ruler');
  return true;
 }
 
+// ---------- הזזה וסיבוב חופשיים (מגע, עכבר, מקלדת) ----------
+const SNAP={rulerVertex:26,rulerAngle:10,lineDist:14,lineAngle:6,proVertex:26,proAngle:5,unpin:45};
+// rawState = המיקום "האמיתי" שהתלמיד הביא אליו את הכלי; toolState = אחרי משיכת המגנט.
+let rawState={ruler:null,protractor:null};
+function syncRaw(key){const s=toolState[key];rawState[key]={x:s.x,y:s.y,a:s.a}}
+function normDeg(a){return((a%360)+540)%360-180}
+function angDiff(a,b){return((a-b)%360+540)%360-180}
+function rotateAround(p,c,deg){const r=deg*Math.PI/180,cs=Math.cos(r),sn=Math.sin(r),dx=p.x-c.x,dy=p.y-c.y;return{x:c.x+cs*dx-sn*dy,y:c.y+sn*dx+cs*dy}}
+function sideNameOf(k,w){const s=sideList().find(s=>(s.p===pts[k]&&s.q===pts[w])||(s.p===pts[w]&&s.q===pts[k]));return s?s.name:null}
+
+function magnetRuler(raw){
+ const o={x:raw.x,y:raw.y};
+ // 1. האפס על קודקוד והשפה בכיוון צלע → מדידת הצלע.
+ for(const k of ['A','B','C']){
+  if(dist(o,pts[k])>SNAP.rulerVertex)continue;
+  for(const w of otherKeys(k)){
+   const dir=rayAngle(sub(pts[w],pts[k]));
+   if(Math.abs(angDiff(raw.a,dir))<=SNAP.rulerAngle)return{x:pts[k].x,y:pts[k].y,a:normDeg(dir),snapped:sideNameOf(k,w),pin:k};
+  }
+ }
+ // 2. השפה כמעט מונחת על ישר של צלע → מיישרים אותה עליו (בלי מדידה אוטומטית).
+ for(const s of sideList()){
+  const dir=rayAngle(sub(s.q,s.p));
+  let target=dir,d=angDiff(raw.a,dir);
+  if(Math.abs(d)>90){target=dir+180;d=angDiff(raw.a,target)}
+  if(Math.abs(d)>SNAP.lineAngle)continue;
+  const f=footOfPerp(o,s.p,s.q);
+  if(dist(o,f.p)>SNAP.lineDist)continue;
+  return{x:f.p.x,y:f.p.y,a:normDeg(target),snapped:null,pin:null};
+ }
+ return{x:raw.x,y:raw.y,a:normDeg(raw.a),snapped:null,pin:null};
+}
+function magnetProtractor(raw){
+ let best=null;
+ for(const k of ['A','B','C']){const d=dist(raw,pts[k]);if(d<=SNAP.proVertex&&(!best||d<best.d))best={k,d}}
+ if(!best)return{x:raw.x,y:raw.y,a:normDeg(raw.a),snapped:null};
+ let a=normDeg(raw.a);
+ // קו הבסיס של המד נמשך לקרן קרובה (צלע / גובה / תיכון / חוצה זווית).
+ for(const r of specialRayEndpoints(best.k)){
+  let t=r.a,d=angDiff(a,t);
+  if(Math.abs(d)>90){t=r.a+180;d=angDiff(a,t)}
+  if(Math.abs(d)<=SNAP.proAngle){a=normDeg(t);break}
+ }
+ return{x:pts[best.k].x,y:pts[best.k].y,a,snapped:best.k};
+}
+function toolEl(key){return document.getElementById(key==='ruler'?'rulerTool':'protractorTool')}
+function pinOf(key){return key==='ruler'?toolState.ruler.pin:toolState.protractor.snapped}
+function applyRaw(key,raw){
+ raw.x=clamp(raw.x,10,W-10);raw.y=clamp(raw.y,10,H-10);
+ rawState[key]=raw;
+ Object.assign(toolState[key],key==='ruler'?magnetRuler(raw):magnetProtractor(raw));
+ const el=toolEl(key);if(el)applyTransform(el,toolState[key]);
+}
+
 function renderTools(){
+ const focusedKey=document.activeElement?.id==='rulerTool'?'ruler':document.activeElement?.id==='protractorTool'?'protractor':null;
  clear(toolsLayer);
  if(toolState.ruler.visible){const g=rulerMarkup();applyTransform(g,toolState.ruler);toolsLayer.append(g);bindTool(g,'ruler')}
  if(toolState.protractor.visible){const g=protractorMarkup(toolState.protractor.side);applyTransform(g,toolState.protractor);toolsLayer.append(g);bindTool(g,'protractor')}
  document.getElementById('rulerBtn').classList.toggle('active',toolState.ruler.visible);
  document.getElementById('protractorBtn').classList.toggle('active',toolState.protractor.visible);
  if(toolState.protractor.visible&&toolState.protractor.snapped)drawAngleRayChoices(toolState.protractor.snapped);
+ if(focusedKey)toolEl(focusedKey)?.focus({preventScroll:true});
 }
 function applyTransform(g,s){g.setAttribute('transform',`translate(${s.x} ${s.y}) rotate(${s.a})`)}
 
-let toolDrag=null;
-function bindTool(g,key){
- g.addEventListener('pointerdown',e=>{
-  e.preventDefault();e.stopPropagation(); const p=svgPoint(e);
-  toolDrag={key,dx:p.x-toolState[key].x,dy:p.y-toolState[key].y,pointerId:e.pointerId};
-  g.classList.add('dragging'); g.setPointerCapture(e.pointerId);
- });
- g.addEventListener('pointermove',e=>{
-  if(!toolDrag||toolDrag.key!==key)return;
-  e.preventDefault();
-  const p=svgPoint(e),s=toolState[key]; clearMeasureResult();
-  if(key==='ruler'){
-    const didSnap=snapRulerAtPoint(p);
-    if(!didSnap){
-      s.snapped=null;s.a=0;
-      s.x=clamp(p.x-toolDrag.dx,20,W-80);s.y=clamp(p.y-toolDrag.dy,20,H-20);
-    }
-    applyTransform(g,s);
-  }else{
-    clear(angleRayLayer);proSelection=[];s.snapped=null;s.side=-1;s.a=0;
-    s.x=clamp(p.x-toolDrag.dx,30,W-30);s.y=clamp(p.y-toolDrag.dy,30,H-30);
-    applyTransform(g,s);
-  }
- });
- const stop=e=>{
-   if(!toolDrag||toolDrag.key!==key)return;
-   const p=svgPoint(e);
-   if(key==='ruler'){
-     if(!toolState.ruler.snapped)snapRulerAtPoint(p);
-     if(toolState.ruler.snapped){addSideMeasurement(toolState.ruler.snapped);showMeasureResult(`${toolState.ruler.snapped} = ${(dist(sideList().find(x=>x.name===toolState.ruler.snapped).p,sideList().find(x=>x.name===toolState.ruler.snapped).q)/RULER_UNIT).toFixed(1)}`)}
-   }else snapProtractorAtPoint(p);
-   toolDrag=null;g.classList.remove('dragging');renderTools();renderMeasurementLabels();
- };
- g.addEventListener('pointerup',stop);
- g.addEventListener('pointercancel',()=>{toolDrag=null;g.classList.remove('dragging')});
+// סיום פעולה על כלי: רישום מדידה והצגת בחירת הקרניים.
+function finishTool(key){
+ const s=toolState[key];
+ syncRaw(key);
+ if(key==='ruler'){
+  if(s.snapped){const side=sideList().find(x=>x.name===s.snapped);addSideMeasurement(s.snapped);showMeasureResult(`${s.snapped} = ${(dist(side.p,side.q)/RULER_UNIT).toFixed(1)}`)}
+ }else if(s.snapped){proSelection=[];showMeasureResult('בחרו שתי קרניים למדידת הזווית')}
+ renderTools();renderMeasurementLabels();
 }
+let finishTimer=null;
+function scheduleFinish(key){clearTimeout(finishTimer);finishTimer=setTimeout(()=>finishTool(key),380)}
 
+let gesture=null, lastTap=null;
+function beginGesture(key,e,mode){
+ const p=svgPoint(e),s=toolState[key];
+ gesture={key,mode,pointers:new Map([[e.pointerId,p]]),startRaw:{x:s.x,y:s.y,a:s.a},grab:p,moved:false};
+ if(mode==='knob')gesture.startPointerAng=rayAngle(sub(p,s));
+ try{svg.setPointerCapture(e.pointerId)}catch(_){}
+ toolEl(key)?.classList.add('dragging');
+ clearMeasureResult();
+ if(key==='protractor'){clear(angleRayLayer);proSelection=[]}
+}
+function startTwoFinger(){
+ const g=gesture,s=toolState[g.key],[p1,p2]=[...g.pointers.values()];
+ g.mode='two';g.startRaw={x:s.x,y:s.y,a:s.a};g.ang0=rayAngle(sub(p2,p1));g.mid0=midpoint(p1,p2);
+ g.pin=pinOf(g.key);g.unpinned=false;
+}
+function bindTool(el,key){
+ el.addEventListener('pointerdown',e=>{
+  e.preventDefault();e.stopPropagation();
+  const p=svgPoint(e),now=performance.now();
+  // הקשה כפולה → הצמדה אוטומטית (ההתנהגות הקודמת של היישומון).
+  if(lastTap&&lastTap.key===key&&now-lastTap.t<330&&dist(p,lastTap.p)<24){
+   lastTap=null;
+   if(key==='ruler'){if(snapRulerAtPoint(p))finishTool('ruler')}
+   else{const s=toolState.protractor;if(snapProtractorAtPoint({x:s.x,y:s.y})){syncRaw('protractor');renderTools()}}
+   return;
+  }
+  beginGesture(key,e,e.target.closest('[data-role="knob"]')?'knob':'move');
+ });
+ el.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const r={...(rawState[key]||toolState[key])},dir=Math.sign(e.deltaY||e.deltaX);
+  r.a+=dir*(e.shiftKey?15:3);applyRaw(key,r);scheduleFinish(key);
+ },{passive:false});
+ el.addEventListener('keydown',e=>{
+  const r={...(rawState[key]||toolState[key])},big=e.shiftKey;
+  if(e.key==='ArrowLeft')r.x-=big?15:3;
+  else if(e.key==='ArrowRight')r.x+=big?15:3;
+  else if(e.key==='ArrowUp')r.y-=big?15:3;
+  else if(e.key==='ArrowDown')r.y+=big?15:3;
+  else if(e.code==='BracketLeft')r.a-=big?15:1;
+  else if(e.code==='BracketRight')r.a+=big?15:1;
+  else return;
+  e.preventDefault();clearMeasureResult();applyRaw(key,r);scheduleFinish(key);
+ });
+}
+// אצבע שנייה יכולה לנחות בכל מקום בשרטוט – לא חייבים לפגוע בכלי עצמו.
+svg.addEventListener('pointerdown',e=>{
+ if(!gesture||gesture.mode==='knob'||gesture.pointers.size!==1||gesture.pointers.has(e.pointerId))return;
+ e.preventDefault();e.stopPropagation();
+ gesture.pointers.set(e.pointerId,svgPoint(e));
+ try{svg.setPointerCapture(e.pointerId)}catch(_){}
+ startTwoFinger();
+},{capture:true});
+window.addEventListener('pointermove',e=>{
+ const g=gesture;if(!g||!g.pointers.has(e.pointerId))return;
+ e.preventDefault();
+ const p=svgPoint(e);g.pointers.set(e.pointerId,p);
+ const st=g.startRaw;let raw;
+ if(g.mode==='move'){
+  if(dist(p,g.grab)>3)g.moved=true;
+  raw={x:st.x+p.x-g.grab.x,y:st.y+p.y-g.grab.y,a:st.a};
+ }else if(g.mode==='knob'){
+  g.moved=true;
+  raw={x:st.x,y:st.y,a:st.a+angDiff(rayAngle(sub(p,st)),g.startPointerAng)};
+ }else{
+  g.moved=true;
+  const [p1,p2]=[...g.pointers.values()],dth=angDiff(rayAngle(sub(p2,p1)),g.ang0),mid=midpoint(p1,p2);
+  if(g.pin&&!g.unpinned&&dist(mid,g.mid0)>SNAP.unpin)g.unpinned=true;
+  if(g.pin&&!g.unpinned)raw={x:st.x,y:st.y,a:st.a+dth};          // כלי מוצמד לקודקוד מסתובב סביבו
+  else{const o=rotateAround(st,g.mid0,dth);raw={x:o.x+mid.x-g.mid0.x,y:o.y+mid.y-g.mid0.y,a:st.a+dth}}
+ }
+ if(g.mode!=='move'||g.moved){if(g.key==='protractor')clear(angleRayLayer);applyRaw(g.key,raw)}
+},{passive:false});
+function endPointer(e){
+ const g=gesture;if(!g||!g.pointers.has(e.pointerId))return;
+ g.pointers.delete(e.pointerId);
+ if(g.pointers.size===1&&g.mode==='two'){
+  const [p]=[...g.pointers.values()],s=toolState[g.key];
+  g.mode='move';g.grab=p;g.startRaw={x:s.x,y:s.y,a:s.a};return;
+ }
+ if(g.pointers.size>0)return;
+ gesture=null;
+ if(!g.moved){lastTap={key:g.key,t:performance.now(),p:g.grab};toolEl(g.key)?.classList.remove('dragging');
+  if(g.key==='protractor'&&toolState.protractor.snapped)drawAngleRayChoices(toolState.protractor.snapped);return}
+ finishTool(g.key);
+}
+window.addEventListener('pointerup',endPointer);
+window.addEventListener('pointercancel',endPointer);
 let draggingVertex=null;
 verticesLayer.addEventListener('pointerdown',e=>{
  const hit=e.target.closest?.('.vertex-hit'); if(!hit)return;
  e.preventDefault(); draggingVertex=hit.dataset.k; clearMeasurements();
- toolState.ruler.snapped=null; toolState.protractor.snapped=null;
+ toolState.ruler.snapped=null; toolState.ruler.pin=null; toolState.protractor.snapped=null;
 });
 window.addEventListener('pointermove',e=>{
  if(!draggingVertex)return;
@@ -578,6 +726,7 @@ window.addEventListener('pointerup',()=>{draggingVertex=null});
 window.addEventListener('pointercancel',()=>{draggingVertex=null});
 
 function render(){renderGeometry();renderTools()}
+let resizeT=null;window.addEventListener('resize',()=>{clearTimeout(resizeT);resizeT=setTimeout(()=>{if(!gesture)renderTools()},150)});
 
 document.querySelectorAll('.vbtn').forEach(b=>b.addEventListener('click',()=>{
  selected=b.dataset.v;clearMeasureResult();proSelection=[];clear(angleRayLayer);toolState.protractor.snapped=null;document.querySelectorAll('.vbtn').forEach(x=>x.classList.toggle('active',x===b));renderGeometry();
@@ -590,12 +739,12 @@ document.getElementById('rulerBtn').onclick=()=>{clearMeasureResult();toolState.
 document.getElementById('protractorBtn').onclick=()=>{clearMeasureResult();toolState.protractor.visible=!toolState.protractor.visible;proSelection=[];clear(angleRayLayer);renderTools()};
 document.getElementById('clearMeasuresBtn').onclick=()=>clearMeasurements();
 document.getElementById('resetBtn').onclick=()=>{
- pts=deep(PRESETS[presetIndex]);selected='A';vis={alt:true,med:true,bis:true};toolState={ruler:{visible:false,x:250,y:625,a:0,snapped:null},protractor:{visible:false,x:500,y:420,a:0,side:-1,snapped:null}};measuredSides=[];measuredAngles=[];proSelection=[];clear(angleRayLayer);clearMeasureResult();
+ pts=deep(PRESETS[presetIndex]);selected='A';vis={alt:true,med:true,bis:true};toolState=initialTools();rawState={ruler:null,protractor:null};measuredSides=[];measuredAngles=[];proSelection=[];clear(angleRayLayer);clearMeasureResult();
  document.querySelectorAll('.vbtn').forEach(b=>b.classList.toggle('active',b.dataset.v==='A'));
  ['toggleAltitude','toggleMedian','toggleBisector'].forEach(id=>document.getElementById(id).classList.remove('off'));render();
 };
 document.getElementById('newBtn').onclick=()=>{
- let next;do{next=Math.floor(Math.random()*PRESETS.length)}while(next===presetIndex&&PRESETS.length>1);presetIndex=next;pts=deep(PRESETS[presetIndex]);selected='A';measuredSides=[];measuredAngles=[];proSelection=[];clear(angleRayLayer);clearMeasureResult();toolState.ruler.snapped=null;toolState.protractor.snapped=null;
+ let next;do{next=Math.floor(Math.random()*PRESETS.length)}while(next===presetIndex&&PRESETS.length>1);presetIndex=next;pts=deep(PRESETS[presetIndex]);selected='A';measuredSides=[];measuredAngles=[];proSelection=[];clear(angleRayLayer);clearMeasureResult();toolState.ruler.snapped=null;toolState.ruler.pin=null;toolState.protractor.snapped=null;
  document.querySelectorAll('.vbtn').forEach(b=>b.classList.toggle('active',b.dataset.v==='A'));renderGeometry();
 };
 render();
